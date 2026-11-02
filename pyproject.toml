@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "opensysone"
+version = "0.1.0"
+description = "Train System-1 decision models (Laya / Jev style) on any swappable encoder backbone"
+readme = "README.md"
+license = {text = "Apache-2.0"}
+requires-python = ">=3.9"
+authors = [{name = "OpenSysOne contributors"}]
+keywords = ["decision model", "classification", "calibration", "encoder", "system-1", "laya", "jev"]
+classifiers = [
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+  "torch>=2.1",
+  "transformers>=4.40",
+  "safetensors",
+  "tokenizers",
+  "numpy",
+  "pyyaml",
+]
+
+[project.optional-dependencies]
+lora = ["peft>=0.10"]
+serve = ["fastapi>=0.110", "uvicorn>=0.29"]
+onnx = ["onnx>=1.15", "onnxruntime>=1.17"]
+dev = ["pytest", "httpx", "peft>=0.10", "fastapi>=0.110", "uvicorn>=0.29", "onnx>=1.15", "onnxruntime>=1.17"]
+all = ["peft>=0.10", "fastapi>=0.110", "uvicorn>=0.29", "onnx>=1.15", "onnxruntime>=1.17"]
+
+[project.scripts]
+opensysone = "opensysone.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["opensysone*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

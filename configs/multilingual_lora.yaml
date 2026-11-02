@@ -1,0 +1,29 @@
+# Multilingual workloads on a small GPU (about 4-8 GB): XLM-R base + LoRA.
+# Swap `model` for any multilingual encoder, e.g. jhu-clsp/mmBERT-base or intfloat/multilingual-e5-base.
+backbone:
+  name: hf
+  model: FacebookAI/xlm-roberta-base
+  gradient_checkpointing: true
+  train_embeddings: true      # lets the new [Q]/[OPT] embeddings learn under LoRA
+  lora:
+    r: 16
+    alpha: 32
+    dropout: 0.05
+    target_modules: all-linear
+
+data:
+  train: ../examples/toy_tickets/data/train.jsonl
+  dev: ../examples/toy_tickets/data/dev.jsonl
+  max_length: 384
+  option_token_budget: 16
+  max_options: 32
+
+train:
+  output_dir: runs/xlmr-lora
+  epochs: 4
+  batch_size: 16
+  grad_accum: 2
+  lr: 2.0e-4          # LoRA adapters tolerate a higher LR
+  head_lr: 1.0e-3
+  llrd: 1.0
+  precision: auto

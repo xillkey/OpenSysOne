@@ -1,0 +1,8 @@
+{
+  "state": {"channel": "email", "lang": "zh", "message": "客服你好，我的订阅被重复扣费了，比较急，请今天回复。我要求退款。"},
+  "questions": {
+    "team": {"type": "choice", "question": "这张工单应该交给哪个团队？", "options": ["billing", "shipping", "technical", "account"]},
+    "urgency": {"type": "score", "question": "这张工单有多紧急？", "min": 1, "max": 5},
+    "refund": {"type": "bool", "question": "客户是否要求退款？"}
+  }
+}

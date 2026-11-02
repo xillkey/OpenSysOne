@@ -1,0 +1,33 @@
+# English workloads, full fine-tuning of ModernBERT-base on one GPU.
+backbone:
+  name: hf
+  model: answerdotai/ModernBERT-base
+  gradient_checkpointing: false
+  # attn_implementation: flash_attention_2   # if flash-attn is installed
+
+data:
+  train: ../examples/toy_tickets/data/train.jsonl
+  dev: ../examples/toy_tickets/data/dev.jsonl
+  max_length: 512
+  option_token_budget: 16
+  max_options: 32
+  shuffle_options: true
+
+loss:
+  rps_weight: 0.5
+  brier_weight: 0.0
+  type_weights: {choice: 1.0, score: 1.0, bool: 1.0}
+
+train:
+  output_dir: runs/modernbert-base
+  epochs: 3
+  batch_size: 32
+  lr: 3.0e-5
+  head_lr: 1.0e-3
+  llrd: 0.9
+  weight_decay: 0.01
+  warmup_ratio: 0.06
+  precision: auto      # bf16 on Ampere+, fp16 on older GPUs, fp32 on CPU
+  eval_every: 0        # 0 = once per epoch
+  early_stop_patience: 3
+  calibrate: true

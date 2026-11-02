@@ -1,0 +1,30 @@
+# Offline smoke test: tiny random BERT built from the toy data (CPU, a few minutes).
+#   python examples/toy_tickets/make_data.py
+#   opensysone make-tiny-backbone --corpus examples/toy_tickets/data/train.jsonl --out runs/tiny-backbone
+#   opensysone train -c configs/toy_tiny.yaml
+backbone:
+  name: hf
+  model: runs/tiny-backbone
+
+data:
+  train: ../examples/toy_tickets/data/train.jsonl
+  dev: ../examples/toy_tickets/data/dev.jsonl
+  max_length: 128
+  option_token_budget: 8
+  max_options: 16
+  shuffle_options: true
+
+loss:
+  rps_weight: 0.5
+
+train:
+  output_dir: runs/toy-tiny
+  epochs: 12
+  batch_size: 32
+  lr: 5.0e-4        # random init needs a much higher LR than a pretrained encoder
+  head_lr: 1.0e-3
+  llrd: 1.0
+  warmup_ratio: 0.05
+  device: cpu
+  log_every: 50
+  early_stop_patience: 3
