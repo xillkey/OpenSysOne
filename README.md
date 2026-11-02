@@ -348,6 +348,33 @@ All three types are unified as "a distribution over some options", so loss, cali
 
 **Loss**: soft-label cross-entropy, plus `rps_weight` × RPS for score questions and optionally `brier_weight` × Brier; question types can be weighted with `type_weights`.
 
+### How Laya does it, and how to get there with switches
+
+Laya (per its public code and docs) uses the same overall idea, with different choices at several points:
+
+- **Backbone**: ModernBERT-large (English, 421M total) or mmBERT-base (multilingual, 322M total), fully fine-tuned.
+- **Layout**: question and options come first, the state last; each option is marked with the tokenizer's own `[MASK]` token, and yes/no questions (`noul`) are written as two options rather than using a separate sigmoid head.
+- **Head**: a question-type embedding added to every token, two extra transformer layers on top of the encoder, and one small MLP shared across types that turns the vector at each option's `[MASK]` position into a logit. Laya also has an act head that reads the pooled vector plus summary features of the answer distribution; OpenSysOne does not implement it.
+- **Training**: RLCD, i.e. soft cross-entropy plus a REINFORCE term on Gaussian-perturbed logits whose reward is a strictly proper score (log + spherical − RPS).
+- **Calibration**: temperatures that also depend on the number of options.
+
+Each of these maps to a [design switch](#design-switches), so you can move from the OpenSysOne default to a Laya-like setup one piece at a time:
+
+| Laya choice | OpenSysOne default | switch |
+|---|---|---|
+| question first, state last | state first | `data.order: question_first` |
+| `[MASK]` as option marker | added `[OPT]` token | `data.marker: mask` |
+| yes/no as two options | sigmoid head on `[Q]` | `data.bool_as_options: true` |
+| vector at the marker position | mean over the option span | `head.pooling: marker` |
+| 2 extra transformer layers | none | `head.head_layers: 2` |
+| question-type embedding | none | `head.type_embedding: true` |
+| one scorer for all types | per-type scorers with question interaction | `head.scorer: shared` |
+| RLCD loss | soft CE + RPS | `loss.name: rlcd` |
+| temperature per option count | temperature per type | `train.calibrate_by_options: true` |
+| ModernBERT-large / mmBERT-base | any encoder | `backbone.model: answerdotai/ModernBERT-large` |
+
+All switches default to off and can be combined freely; the full Laya-like combination is shown under [Design switches](#design-switches). This is our reading of Laya's design, not a reproduction: no official Laya weights are included, the act head is missing, and whether each switch helps is still open (see [Ablations](#ablations)).
+
 ## Ablations
 
 The repo includes a harder bilingual routing dataset and an ablation script for comparing [design switches](#design-switches) one by one on the same backbone and data.

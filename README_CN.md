@@ -346,6 +346,33 @@ state ──┐
 
 **损失**：软标签交叉熵，加上 `rps_weight` × 打分题的 RPS，可选 `brier_weight` × Brier；题型之间可以用 `type_weights` 加权。
 
+### Laya 的做法，以及如何用开关切换过去
+
+按 Laya 公开的代码和文档，它的整体思路和上面相同，但在几个环节做了不同选择：
+
+- **骨干**：ModernBERT-large（英文，总参数约 421M）或 mmBERT-base（多语言，总参数约 322M），全量微调。
+- **布局**：题目和选项在前、state 在最后；每个选项用分词器自带的 `[MASK]` 做标记；是非题（`noul`）写成两个选项，不单独用 sigmoid 头。
+- **输出头**：给每个 token 加题型嵌入，在编码器上再叠 2 层 transformer，然后用一个各题型共用的小 MLP，把每个选项 `[MASK]` 位置的向量变成 logit。Laya 还有一个 act 头，读取池化向量和答案分布的摘要特征；OpenSysOne 没有实现它。
+- **训练**：RLCD，即软交叉熵加上一个 REINFORCE 项：对 logits 加高斯噪声，以严格适当评分（对数得分 + 球面得分 − RPS）作为奖励。
+- **校准**：温度还会随选项数变化。
+
+上面每一点都对应一个[设计开关](#设计开关)，可以从 OpenSysOne 的默认配置出发，一项一项切换到 Laya 式的做法：
+
+| Laya 的选择 | OpenSysOne 默认 | 开关 |
+|---|---|---|
+| 题目在前、state 在后 | state 在前 | `data.order: question_first` |
+| 用 `[MASK]` 做选项标记 | 新增的 `[OPT]` 标记 | `data.marker: mask` |
+| 是非题写成两个选项 | `[Q]` 上的 sigmoid 头 | `data.bool_as_options: true` |
+| 只取标记位置的向量 | 选项片段求平均 | `head.pooling: marker` |
+| 额外 2 层 transformer | 无 | `head.head_layers: 2` |
+| 题型嵌入 | 无 | `head.type_embedding: true` |
+| 所有题型共用一个打分器 | 按题型分开、带题目交互特征 | `head.scorer: shared` |
+| RLCD 损失 | 软交叉熵 + RPS | `loss.name: rlcd` |
+| 按选项数设温度 | 按题型设温度 | `train.calibrate_by_options: true` |
+| ModernBERT-large / mmBERT-base | 任意编码器 | `backbone.model: answerdotai/ModernBERT-large` |
+
+所有开关默认关闭，可以任意组合；完整的 Laya 式组合见[设计开关](#设计开关)。这只是我们对 Laya 设计的理解，不是复现：仓库里没有 Laya 官方权重，也没有 act 头，各开关是否有用也还没有结论（见[对照实验](#对照实验)）。
+
 ## 对照实验
 
 仓库带了一个更难的双语路由数据集和一个对照脚本，用来在同一个骨干、同一份数据上逐项比较[设计开关](#设计开关)。
